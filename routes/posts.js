@@ -3,12 +3,16 @@ const mongoose = require('mongoose');
 const postSchema = mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "user"
+    ref: "User", // Capital 'U' for consistency
+    required: true
   },
-  caption: String,
+  caption: {
+    type: String,
+    trim: true
+  },
   like: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: "user"
+    ref: "User"
   }],
   comments: {
     type: Array,
@@ -20,10 +24,13 @@ const postSchema = mongoose.Schema({
   },
   shares: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: "user"
+    ref: "User"
   }],
-  picture: String
-})
-
+  picture: {
+    type: String,
+    required: true
+  }
+}, { timestamps: true });
 
 module.exports = mongoose.model("post", postSchema);
+

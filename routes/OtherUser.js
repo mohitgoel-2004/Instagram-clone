@@ -35,35 +35,30 @@ router.get("/feed", isLoggedIn, async function (req, res) {
     .findOne({ username: req.session.passport.user })
     .populate("posts");
 
-  // Dusre users ka data (current user ko chhod ke)
-  let otherUsers = await userModel.find({
-    _id: { $ne: user._id }
-  });
-
-  // Dusre users ki stories
-  let stories = await storyModel.find({ user: { $ne: user._id } })
+  let stories = await storyModel
+    .find({ user: { $ne: user._id } })
     .populate("user");
 
-  // Duplicate stories remove karna
-  let uniq = {};
-  let filteredStories = stories.filter(item => {
+  // Remove duplicate stories
+  var uniq = {};
+  var filtered = stories.filter(item => {
     if (!uniq[item.user.id]) {
-      uniq[item.user.id] = true;
+      uniq[item.user.id] = " ";
       return true;
     }
-    return false;
+    else return false;
   });
 
-  // Posts latest order me
-  let posts = await postModel.find()
-    .populate("user")
-    .sort({ date: -1 });
+  let posts = await postModel.find().populate("user");
+
+  // Dusre users ke data for showing profile pics
+  let otherUsers = await userModel.find({ _id: { $ne: user._id } });
 
   res.render("feed", {
     footer: true,
     user,
     posts,
-    stories: filteredStories,
+    stories: filtered,
     otherUsers,
     dater: utils.formatRelativeTime,
   });
@@ -74,7 +69,6 @@ router.get("/profile", isLoggedIn, async function (req, res) {
     .findOne({ username: req.session.passport.user })
     .populate("posts")
     .populate("saved");
-
   res.render("profile", { footer: true, user });
 });
 
@@ -82,8 +76,7 @@ router.get("/profile/:user", isLoggedIn, async function (req, res) {
   let user = await userModel.findOne({ username: req.session.passport.user });
 
   if (user.username === req.params.user) {
-    res.redirect("/profile");
-    return;
+    return res.redirect("/profile");
   }
 
   let userprofile = await userModel
@@ -190,7 +183,6 @@ router.post(
       user.stories.push(story._id);
     } else {
       res.send("tez mat chalo");
-      return;
     }
 
     await user.save();
@@ -218,6 +210,7 @@ router.post("/register", function (req, res) {
     username: req.body.username,
     email: req.body.email,
     name: req.body.name,
+    picture: "default-profile.jpg", // Default profile image
   });
 
   userModel.register(user, req.body.password).then(function (registereduser) {

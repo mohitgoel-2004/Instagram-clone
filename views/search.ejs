@@ -1,43 +1,112 @@
 <% include ./partials/header.ejs %>
-    <div class="w-full min-h-screen bg-zinc-900 px-4 py-5">
-        <div class="border-2 border-zinc-800 flex items-center justify-between px-2 py-1 rounded-md">
-            <i class="text-white ri-search-line"></i>
-            <input class="input ml-1 w-full bg-zinc-900 outline-none text-zinc-400" type="text"
-                placeholder="search username">
-        </div>
-        <div class="users">
-
-        </div>
+<div class="w-full min-h-screen bg-black text-white px-4 py-5">
+  <!-- Search Bar -->
+  <div class="relative mb-5">
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <i class="ri-search-line text-gray-400"></i>
     </div>
+    <input 
+      class="w-full bg-gray-900 py-2 pl-10 pr-4 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-600"
+      type="text"
+      placeholder="Search"
+      id="searchInput"
+    >
+  </div>
 
-    <script>
-        var inp = document.querySelector(".input")
+  <!-- Recent Searches (optional) -->
+  <div class="mb-6 hidden" id="recentSearches">
+    <h3 class="text-gray-400 text-sm font-medium mb-3">Recent</h3>
+    <!-- Recent searches would go here -->
+  </div>
 
-        inp.addEventListener("input", function (e) {
-            if (inp.value !== '') {
-                fetch(`/search/${inp.value}`)
-                    .then(raw => raw.json())
-                    .then(result => {
-                        let clutter = "";
+  <!-- Search Results -->
+  <div class="space-y-4" id="searchResults">
+    <!-- Default state - before searching -->
+    <div class="flex flex-col items-center justify-center py-16" id="defaultState">
+      <i class="ri-search-line text-4xl text-gray-500 mb-3"></i>
+      <p class="text-gray-400">Search for users</p>
+    </div>
+  </div>
+</div>
 
-                        result.forEach((item) => {
-                            clutter += `<a href="/profile/${item.username}" class="outline-none">
-            <div class="text-white flex items-center gap-2 mt-5">
-                <div class="image w-[11vw] h-[11vw] rounded-full bg-sky-100 overflow-hidden">
-                    <img src="/images/uploads/${item.picture}" alt="">
-                    </div>
-                <div class="text">
-                    <h3>${item.username}</h3>
-                    <h4 class="text-xs opacity-30 leading-none">${item.name}</h4>
-                </div>
-            </div>            
-        </a>`
-                        })
+<script>
+  const searchInput = document.getElementById('searchInput');
+  const searchResults = document.getElementById('searchResults');
+  const defaultState = document.getElementById('defaultState');
+  const recentSearches = document.getElementById('recentSearches');
 
-                        document.querySelector(".users")
-                            .innerHTML = clutter;
-                    });
-            }
-        })
-    </script>
-    <% include ./partials/footer.ejs %>
+  // Debounce function to limit API calls
+  function debounce(func, timeout = 300) {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    };
+  }
+
+  const handleSearch = debounce(async (query) => {
+    if (!query.trim()) {
+      defaultState.classList.remove('hidden');
+      recentSearches.classList.add('hidden');
+      searchResults.innerHTML = '';
+      searchResults.appendChild(defaultState);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/search/${encodeURIComponent(query)}`);
+      const results = await response.json();
+
+      defaultState.classList.add('hidden');
+      recentSearches.classList.add('hidden');
+      
+      if (results.length === 0) {
+        searchResults.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-16">
+            <p class="text-gray-400">No results found</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      results.forEach(user => {
+        html += `
+          <a href="/profile/${user.username}" class="flex items-center p-2 hover:bg-gray-900 rounded-lg transition">
+            <div class="w-12 h-12 rounded-full overflow-hidden border border-gray-700 mr-3">
+              <img 
+                src="/images/uploads/${user.picture || 'default-profile.jpg'}" 
+                alt="${user.username}"
+                class="w-full h-full object-cover"
+                onerror="this.src='/images/default-profile.jpg'"
+              >
+            </div>
+            <div>
+              <h3 class="font-medium">${user.username}</h3>
+              <p class="text-gray-400 text-sm">${user.name || ''}</p>
+            </div>
+          </a>
+        `;
+      });
+
+      searchResults.innerHTML = html;
+    } catch (error) {
+      console.error('Search error:', error);
+      searchResults.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-16">
+          <p class="text-gray-400">Error loading results</p>
+        </div>
+      `;
+    }
+  });
+
+  searchInput.addEventListener('input', (e) => {
+    handleSearch(e.target.value);
+  });
+
+  // Focus the search input on page load
+  window.addEventListener('DOMContentLoaded', () => {
+    searchInput.focus();
+  });
+</script>
+<% include ./partials/footer.ejs %>
